@@ -10,7 +10,7 @@ interface SupplyChainData {
   entity: string
   location: string
   inventory_level: number
-  status: "normal" | "alert"
+  status: "normal" | "warning" | "critical"
   timestamp: string
 }
 
@@ -20,22 +20,23 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [isUsingMockData, setIsUsingMockData] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<"all" | "normal" | "alert">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "normal" | "warning" | "critical">("all")
 
   const fetchData = async () => {
     try {
       setLoading(true)
       const response = await fetch("/api/data/dashboard")
-      if (!response.ok && response.status !== 502) {
+      if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const result = await response.json()
-      setData(result)
+      setData(result.data || [])
       setLastUpdated(new Date())
       setError(null)
-      setIsUsingMockData(response.status === 502)
+      setIsUsingMockData(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data")
+      setIsUsingMockData(true)
       console.error("Error fetching data:", err)
     } finally {
       setLoading(false)
@@ -52,15 +53,26 @@ export default function Dashboard() {
     if (status === "normal") {
       return (
         <span className="relative group">
-          <Badge className="bg-green-100 text-green-800 border-green-200 font-medium px-3 py-1 flex items-center gap-1 animate-pulse" aria-label="Operational status" tabIndex={0}>
-            <span className="mr-1">✅</span>Operational
+          <Badge className="bg-green-100 text-green-800 border-green-200 font-medium px-3 py-1 flex items-center gap-1 animate-pulse" aria-label="Normal status" tabIndex={0}>
+            <span className="mr-1">✅</span>Normal
           </Badge>
           <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-max bg-white text-green-800 text-xs rounded shadow-lg px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10 border border-green-200">
             All systems functional
           </span>
         </span>
       )
-    } else {
+    } else if (status === "warning") {
+      return (
+        <span className="relative group">
+          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 font-medium px-3 py-1 flex items-center gap-1 animate-pulse" aria-label="Warning status" tabIndex={0}>
+            <span className="mr-1">⚠️</span>Warning
+          </Badge>
+          <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-max bg-white text-yellow-800 text-xs rounded shadow-lg px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10 border border-yellow-200">
+            Inventory level low
+          </span>
+        </span>
+      )
+    } else if (status === "critical") {
       return (
         <span className="relative group">
           <Badge className="bg-red-100 text-red-800 border-red-200 font-medium px-3 py-1 flex items-center gap-1 animate-bounce" aria-label="Critical status" tabIndex={0}>
@@ -68,6 +80,17 @@ export default function Dashboard() {
           </Badge>
           <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-max bg-white text-red-800 text-xs rounded shadow-lg px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10 border border-red-200">
             Immediate attention required
+          </span>
+        </span>
+      )
+    } else {
+      return (
+        <span className="relative group">
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200 font-medium px-3 py-1 flex items-center gap-1" aria-label="Unknown status" tabIndex={0}>
+            <span className="mr-1">❓</span>Unknown
+          </Badge>
+          <span className="absolute left-1/2 -translate-x-1/2 mt-2 w-max bg-white text-gray-800 text-xs rounded shadow-lg px-2 py-1 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity z-10 border border-gray-200">
+            Unrecognized status value
           </span>
         </span>
       )
@@ -89,12 +112,16 @@ export default function Dashboard() {
     }
   }
 
-  const alertCount = data.filter((item) => item.status === "alert").length
+  const alertCount = data.filter((item) => item.status === "critical").length
   const normalCount = data.filter((item) => item.status === "normal").length
+  const warningCount = data.filter((item) => item.status === "warning").length
   const totalInventory = data.reduce((sum, item) => sum + item.inventory_level, 0)
 
   // Filtering logic
-  const filteredData = statusFilter === "all" ? data : data.filter((item) => item.status === statusFilter)
+  const filteredData =
+    statusFilter === "all"
+      ? data
+      : data.filter((item) => item.status === statusFilter)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-6">
@@ -134,7 +161,7 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-blue-900 font-semibold text-lg">Demo Mode Active</h3>
                 <p className="text-blue-700 mt-1">
-                  Displaying realistic supply chain simulation data. Connect your Flask backend on port 5000 for live
+                  Displaying realistic supply chain simulation data. Connect your Flask backend on port 4000 for live
                   data integration.
                 </p>
               </div>
@@ -211,8 +238,9 @@ export default function Dashboard() {
         <div className="flex flex-wrap items-center gap-2 mb-4" aria-label="Status filter">
           <span className="text-gray-700 font-medium mr-2">Filter by status:</span>
           <Button variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")} aria-pressed={statusFilter === "all"} aria-label="Show all statuses">All</Button>
-          <Button variant={statusFilter === "normal" ? "default" : "outline"} onClick={() => setStatusFilter("normal")} aria-pressed={statusFilter === "normal"} aria-label="Show only operational">Operational</Button>
-          <Button variant={statusFilter === "alert" ? "default" : "outline"} onClick={() => setStatusFilter("alert")} aria-pressed={statusFilter === "alert"} aria-label="Show only critical">Critical</Button>
+          <Button variant={statusFilter === "normal" ? "default" : "outline"} onClick={() => setStatusFilter("normal")} aria-pressed={statusFilter === "normal"} aria-label="Show only normal">Normal</Button>
+          <Button variant={statusFilter === "warning" ? "default" : "outline"} onClick={() => setStatusFilter("warning")} aria-pressed={statusFilter === "warning"} aria-label="Show only warning">Warning</Button>
+          <Button variant={statusFilter === "critical" ? "default" : "outline"} onClick={() => setStatusFilter("critical")} aria-pressed={statusFilter === "critical"} aria-label="Show only critical">Critical</Button>
         </div>
 
         {/* Enhanced Main Data Table */}
@@ -271,8 +299,15 @@ export default function Dashboard() {
                       filteredData.map((item, index) => (
                         <tr
                           key={index}
-                          className={`border-b border-gray-100 transition-colors ${item.status === "alert" ? "bg-red-50/60" : "hover:bg-blue-50"}`}
-                          aria-label={item.status === "alert" ? "Critical row" : "Operational row"}
+                          className={`border-b border-gray-100 transition-colors ${item.status === "critical"
+                            ? "bg-red-50/60"
+                            : item.status === "warning"
+                              ? "bg-yellow-50/60"
+                              : item.status === "normal"
+                                ? "bg-green-50/40"
+                                : "hover:bg-blue-50"
+                            }`}
+                          aria-label={item.status === "critical" ? "Critical row" : item.status === "warning" ? "Warning row" : "Normal row"}
                         >
                           <td className="py-5 px-6">
                             <div className="flex items-center gap-4">

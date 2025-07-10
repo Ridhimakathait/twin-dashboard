@@ -1,7 +1,0 @@
-{
-    "entity": "Truck 42",
-    "location": "En route to Houston, TX",
-    "inventory_level": 300,
-    "status": "in_transit",
-    "timestamp": "2024-06-01T12:30:00Z"
-}

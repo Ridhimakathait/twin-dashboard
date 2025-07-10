@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") || "http://localhost:5000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") || "http://localhost:4000"
 
 /** Enhanced mock data for better demo experience */
 const mockData = [
@@ -15,7 +15,7 @@ const mockData = [
     entity: "supplier",
     location: "Chennai Auto Parts",
     inventory_level: 180,
-    status: "alert",
+    status: "critical",
     timestamp: new Date().toISOString(),
   },
   {
@@ -36,7 +36,7 @@ const mockData = [
     entity: "warehouse",
     location: "Pune Logistics Center",
     inventory_level: 450,
-    status: "alert",
+    status: "warning",
     timestamp: new Date().toISOString(),
   },
   {
@@ -50,7 +50,7 @@ const mockData = [
     entity: "store",
     location: "Hyderabad Mega Store",
     inventory_level: 25,
-    status: "alert",
+    status: "critical",
     timestamp: new Date().toISOString(),
   },
   {
@@ -71,9 +71,9 @@ const mockData = [
 
 export async function GET(_req: NextRequest) {
   try {
-    // Skip the upstream call if running locally without backend
+    // If running on Vercel or backend is unreachable, serve mock data
     if (BACKEND_URL.startsWith("http://localhost") && process.env.VERCEL_URL) {
-      return NextResponse.json(mockData, { status: 200 })
+      return NextResponse.json({ data: mockData }, { status: 200 })
     }
 
     const upstream = await fetch(`${BACKEND_URL}/data/dashboard`, {
@@ -84,13 +84,13 @@ export async function GET(_req: NextRequest) {
 
     if (!upstream.ok) {
       console.error("Upstream returned:", upstream.status)
-      return NextResponse.json(mockData, { status: upstream.status })
+      return NextResponse.json({ data: mockData }, { status: upstream.status })
     }
 
     const data = await upstream.json()
     return NextResponse.json(data, { status: 200 })
   } catch (err) {
     console.error("Proxy error:", err)
-    return NextResponse.json(mockData, { status: 502 })
+    return NextResponse.json({ data: mockData }, { status: 502 })
   }
 }

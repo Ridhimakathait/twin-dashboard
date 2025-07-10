@@ -1,7 +1,0 @@
-{
-    "entity": "Warehouse A",
-    "location": "Dallas, TX",
-    "inventory_level": 1200,
-    "status": "operational",
-    "timestamp": "2024-06-01T10:00:00Z"
-}
